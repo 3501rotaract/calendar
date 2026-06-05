@@ -1009,44 +1009,63 @@
         buildFilterPills();
         renderTimeline();
       } catch (err) {
-        console.error(err); // 錯誤處理，顯示錯誤訊息
-        loading.innerHTML = `
-          <div style="color:#D91B5C;">
-            ⚠️ 無法載入行事曆<br>
-            <span style="font-size:13px;color:#888;display:block;margin-top:8px;">
-              請確認 API Key 已設定，且日曆已設為公開。<br>${err.message}
-            </span>
-          </div>
-        `;
+        console.error(err);
+
+        // 如果無法從 API 獲取數據，嘗試從緩存中讀取
+        const cache = await caches.open('3501-pwa-cache-v1');
+        const cachedResponse = await cache.match(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events`);
+        if (cachedResponse) {
+          const data = await cachedResponse.json();
+          allEvents = data.items.map(ev => ({
+            title: ev.summary || '（無標題）',
+            start: new Date(ev.start.dateTime || ev.start.date),
+            end: ev.end ? new Date(ev.end.dateTime || ev.end.date) : null,
+            categories: ev.summary?.match(/【(.+?)】/g) || ['未分類'],
+            location: ev.location || '',
+            allDay: !ev.start.dateTime,
+            isRep: false,
+            description: ev.description || '',
+          }));
+          renderTimeline();
+        } else {
+          loading.innerHTML = `
+            <div style="color:#D91B5C;">
+              ⚠️ 無法載入行事曆<br>
+              <span style="font-size:13px;color:#888;display:block;margin-top:8px;">
+                請確認您已連接網路，或稍後再試。
+              </span>
+            </div>
+          `;
+        }
       }
     }
 
     function buildFilterPills() {
-  const bar = document.getElementById('filterBar'); // 取得篩選條的 DOM 元素
-  const allBtn = bar.querySelector('.filter-pill-all'); // 取得 "全部" 篩選按鈕
-  bar.innerHTML = ''; // 清空篩選條內容
-  allBtn.classList.toggle('active', activeFilter === 'all'); // 如果當前篩選為 "全部"，則將其設為活躍狀態
-  bar.appendChild(allBtn); // 將 "全部" 按鈕重新加入篩選條
+      const bar = document.getElementById('filterBar'); // 取得篩選條的 DOM 元素
+      const allBtn = bar.querySelector('.filter-pill-all'); // 取得 "全部" 篩選按鈕
+      bar.innerHTML = ''; // 清空篩選條內容
+      allBtn.classList.toggle('active', activeFilter === 'all'); // 如果當前篩選為 "全部"，則將其設為活躍狀態
+      bar.appendChild(allBtn); // 將 "全部" 按鈕重新加入篩選條
 
-  // 遍歷預設標籤，按照固定順序生成篩選按鈕
-  PRESET_CATEGORY_ORDER.forEach(category => {
-    if (categories.has(category)) {
-      const colors = categories.get(category);
-      const pill = document.createElement('div'); // 建立一個新按鈕
-      pill.className = 'filter-pill' + (activeFilter === category ? ' active' : ''); // 設定按鈕的樣式
-      pill.dataset.category = category; // 設定按鈕的分類名稱
-      pill.onclick = () => filterCategory(category, pill); // 點擊時執行篩選函數
-      pill.innerHTML = `<span class="color-dot" style="background:${colors.border}"></span>${category}`; // 添加分類名稱與顏色點
+      // 遍歷預設標籤，按照固定順序生成篩選按鈕
+      PRESET_CATEGORY_ORDER.forEach(category => {
+        if (categories.has(category)) {
+          const colors = categories.get(category);
+          const pill = document.createElement('div'); // 建立一個新按鈕
+          pill.className = 'filter-pill' + (activeFilter === category ? ' active' : ''); // 設定按鈕的樣式
+          pill.dataset.category = category; // 設定按鈕的分類名稱
+          pill.onclick = () => filterCategory(category, pill); // 點擊時執行篩選函數
+          pill.innerHTML = `<span class="color-dot" style="background:${colors.border}"></span>${category}`; // 添加分類名稱與顏色點
 
       // 如果按鈕是活躍狀態，設置其樣式
-      if (activeFilter === category) {
-        pill.style.background = colors.bg;
-        pill.style.color = colors.color;
-        pill.style.borderColor = colors.border;
-      }
-      bar.appendChild(pill); // 將按鈕加入篩選條
-    }
-  });
+          if (activeFilter === category) {
+            pill.style.background = colors.bg;
+            pill.style.color = colors.color;
+           pill.style.borderColor = colors.border;
+          }
+          bar.appendChild(pill); // 將按鈕加入篩選條
+        }
+      });
 
   // 為其他非預設分類建立篩選按鈕
   Array.from(categories.keys())
