@@ -959,14 +959,19 @@
         repEvents = repItems.map(ev => {
           const start = ev.start.dateTime || ev.start.date; // 開始時間
           const end = ev.end?.dateTime || ev.end?.date; // 結束時間
+          const matches = [...(ev.summary?.matchAll(/【(.+?)】/g) || [])]; // 提取活動分類
+          const cats = matches.length > 0 ? matches.map(m => m[1]) : []; // 如果沒有分類，分類為空陣列
+          const title = ev.summary?.replace(/【.+?】\s*/g, '') || '（無標題）'; // 去除分類標籤後的活動標題
+
           return {
-            title: ev.summary || '（無標題）', // 活動標題
-            category: REP_CATEGORY, // 活動分類為 "代表行程"
+            title, // 活動標題
+            categories: cats, // 活動分類
             start: new Date(start), // 開始時間
             end: end ? new Date(end) : null, // 結束時間
             location: ev.location || '', // 活動地點
             allDay: !ev.start.dateTime, // 是否為全天活動
             isRep: true, // 標記為代表行程
+            description: ev.description || '', // 活動描述
           };
         });
 
@@ -1187,11 +1192,15 @@
 
           // 處理活動分類標籤
           const catTags = ev.isRep
-            ? `<span class="event-category" style="background:${c.border}33;color:${c.color}">${ev.category}</span>` // 代表行程分類
-            : ev.categories.map(cat => {
-                const cc = categories.get(cat) || CATEGORY_COLORS[0];
-                return `<span class="event-category" style="background:${cc.border}33;color:${cc.color}">${cat}</span>`; // 一般分類
-              }).join(' ');
+          ? `<span class="event-category" style="background:${REP_COLOR.border}33;color:${REP_COLOR.color}">${REP_CATEGORY}</span>` + // 代表行程分類
+            ev.categories.map(cat => {
+              const cc = categories.get(cat) || CATEGORY_COLORS[0]; // 從主行事曆的分類中取得對應顏色
+              return `<span class="event-category" style="background:${cc.border}33;color:${cc.color}">${cat}</span>`; // 顯示其他分類標籤
+            }).join(' ')
+          : ev.categories.map(cat => {
+              const cc = categories.get(cat) || CATEGORY_COLORS[0];
+              return `<span class="event-category" style="background:${cc.border}33;color:${cc.color}">${cat}</span>`; // 一般分類
+            }).join(' ');
 
           // 生成 Google 日曆的 URL
           const startUTC = ev.start.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
