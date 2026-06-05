@@ -8,8 +8,32 @@
 	<link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png"> <!-- iPhone主畫面圖標 -->
 	<meta name="apple-mobile-web-app-capable" content="yes"> <!-- iPhone全螢幕模式運行 -->
 	<meta name="apple-mobile-web-app-status-bar-style" content="default"> <!-- iPhone狀態列白底黑字 -->
-	<link rel="manifest" href="/manifest.json">
+	<!-- 添加 PWA 支持 -->
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#003366">
+    <script>
+      // 註冊 Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch(error => {
+              console.error('Service Worker registration failed:', error);
+            });
+        });
+      }
+      // 檢查網路狀態
+      function checkOnlineStatus() {
+        if (!navigator.onLine) {
+          alert('目前處於離線模式，您正在查看緩存的行事曆資料。');
+        }
+      }
+      // 監聽網路狀態變化
+      window.addEventListener('offline', checkOnlineStatus);
+      window.addEventListener('online', () => alert('您已連上網路！'));
+    </script>
 	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet"> <!-- 引入 Google Fonts 字體 -->
     <style>
       /* 定義 CSS 變數，方便統一管理顏色和樣式 */
